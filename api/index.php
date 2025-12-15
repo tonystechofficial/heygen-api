@@ -45,13 +45,17 @@ spl_autoload_register(function ($class) {
         return;
     }
 
+    // App\Controllers\AvatarController -> Controllers\AvatarController
     $relativeClass = substr($class, $len);
-    $file = $baseDir . str_replace('\\', '/', strtolower($relativeClass)) . '.php';
-    
-    // Try lowercase first, then original case
-    if (!file_exists($file)) {
-        $file = $baseDir . str_replace('\\', '/', $relativeClass) . '.php';
-    }
+
+    // Split into parts: ['Controllers', 'AvatarController']
+    $parts = explode('\\', $relativeClass);
+
+    // Lowercase the directory names, keep filename as-is
+    $fileName = array_pop($parts);
+    $dirPath = implode('/', array_map('strtolower', $parts));
+
+    $file = $baseDir . ($dirPath ? $dirPath . '/' : '') . $fileName . '.php';
 
     if (file_exists($file)) {
         require $file;

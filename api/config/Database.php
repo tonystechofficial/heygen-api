@@ -56,7 +56,8 @@ class Database
     private function connect(): void
     {
         $host = $_ENV['DB_HOST'] ?? 'mysql';
-        $port = $_ENV['DB_PORT'] ?? '3306';
+        // Inside Docker network, always use internal port 3306
+        $port = '3306';
         $database = $_ENV['DB_DATABASE'] ?? 'heygen_api';
         $username = $_ENV['DB_USER'] ?? 'heygen';
         $password = $_ENV['DB_PASSWORD'] ?? 'heygen_password';
