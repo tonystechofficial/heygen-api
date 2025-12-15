@@ -48,14 +48,17 @@ class VoiceController
     public function sync(): array
     {
         $result = $this->syncFromHeygen();
-        
+
         if (!$result['success']) {
             return ['success' => false, 'error' => $result['error'], 'code' => 500];
         }
 
+        $voices = $this->voiceRepository->findAll();
+
         return [
             'success' => true,
             'message' => "Synced {$result['count']} voices from HeyGen",
+            'data' => $voices,
             'code' => 200,
         ];
     }
@@ -68,20 +71,26 @@ class VoiceController
         $response = $this->heygenService->listVoices();
 
         if (!$response['success']) {
-            return ['success' => false, 'error' => $response['error'] ?? 'Failed to fetch voices'];
+            return ['success' => false, 'error' => $response['error'] ?? $response['message'] ?? 'Failed to fetch voices'];
         }
 
-        $voices = $response['data']['voices'] ?? [];
+        // HeyGen API V2 returns data.voices array
+        $voices = $response['data']['voices'] ?? $response['voices'] ?? [];
         $formattedVoices = [];
 
         foreach ($voices as $voice) {
+            // Handle both possible key formats from HeyGen API
+            $voiceId = $voice['voice_id'] ?? $voice['id'] ?? '';
+
+            if (empty($voiceId)) continue;
+
             $formattedVoices[] = [
-                'heygen_voice_id' => $voice['voice_id'] ?? '',
-                'name' => $voice['name'] ?? 'Unknown',
-                'language' => $voice['language'] ?? null,
+                'heygen_voice_id' => $voiceId,
+                'name' => $voice['name'] ?? $voice['display_name'] ?? 'Unknown',
+                'language' => $voice['language'] ?? $voice['locale'] ?? null,
                 'gender' => $voice['gender'] ?? null,
-                'preview_url' => $voice['preview_audio'] ?? null,
-                'is_premium' => $voice['is_premium'] ?? 0,
+                'preview_url' => $voice['preview_audio'] ?? $voice['sample_url'] ?? null,
+                'is_premium' => $voice['is_premium'] ?? $voice['premium'] ?? 0,
             ];
         }
 

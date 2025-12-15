@@ -41,14 +41,17 @@ class AvatarController
     public function sync(): array
     {
         $result = $this->syncFromHeygen();
-        
+
         if (!$result['success']) {
             return ['success' => false, 'error' => $result['error'], 'code' => 500];
         }
 
+        $avatars = $this->avatarRepository->findAll();
+
         return [
             'success' => true,
             'message' => "Synced {$result['count']} avatars from HeyGen",
+            'data' => $avatars,
             'code' => 200,
         ];
     }
@@ -61,19 +64,26 @@ class AvatarController
         $response = $this->heygenService->listAvatars();
 
         if (!$response['success']) {
-            return ['success' => false, 'error' => $response['error'] ?? 'Failed to fetch avatars'];
+            return ['success' => false, 'error' => $response['error'] ?? $response['message'] ?? 'Failed to fetch avatars'];
         }
 
-        $avatars = $response['data']['avatars'] ?? [];
+        // HeyGen API V2 returns data.avatars array
+        $avatars = $response['data']['avatars'] ?? $response['avatars'] ?? [];
         $formattedAvatars = [];
 
         foreach ($avatars as $avatar) {
+            // Handle both possible key formats from HeyGen API
+            $avatarId = $avatar['avatar_id'] ?? $avatar['id'] ?? '';
+            $avatarName = $avatar['avatar_name'] ?? $avatar['name'] ?? 'Unknown';
+
+            if (empty($avatarId)) continue;
+
             $formattedAvatars[] = [
-                'heygen_avatar_id' => $avatar['avatar_id'] ?? '',
-                'name' => $avatar['avatar_name'] ?? 'Unknown',
-                'preview_url' => $avatar['preview_image_url'] ?? null,
+                'heygen_avatar_id' => $avatarId,
+                'name' => $avatarName,
+                'preview_url' => $avatar['preview_image_url'] ?? $avatar['preview_url'] ?? $avatar['thumbnail_url'] ?? null,
                 'gender' => $avatar['gender'] ?? null,
-                'avatar_type' => $avatar['type'] ?? 'public',
+                'avatar_type' => $avatar['type'] ?? $avatar['avatar_type'] ?? 'public',
             ];
         }
 

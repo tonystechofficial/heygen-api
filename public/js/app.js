@@ -52,32 +52,63 @@ createApp({
             return response.json();
         };
 
+        // Loading states
+        const loadingAvatars = ref(false);
+        const loadingVoices = ref(false);
+        const errors = reactive({ avatars: null, voices: null });
+
         // Load avatars
         const loadAvatars = async () => {
+            loadingAvatars.value = true;
+            errors.avatars = null;
             try {
                 const result = await api('GET', '/avatars');
-                if (result.success) avatars.value = result.data;
+                if (result.success) {
+                    avatars.value = result.data || [];
+                } else {
+                    errors.avatars = result.error || 'Erreur lors du chargement des avatars';
+                }
             } catch (e) {
                 console.error('Failed to load avatars:', e);
+                errors.avatars = 'Erreur réseau: ' + e.message;
+            } finally {
+                loadingAvatars.value = false;
             }
         };
 
         // Load voices
         const loadVoices = async () => {
+            loadingVoices.value = true;
+            errors.voices = null;
             try {
                 const result = await api('GET', '/voices');
-                if (result.success) voices.value = result.data;
+                if (result.success) {
+                    voices.value = result.data || [];
+                } else {
+                    errors.voices = result.error || 'Erreur lors du chargement des voix';
+                }
             } catch (e) {
                 console.error('Failed to load voices:', e);
+                errors.voices = 'Erreur réseau: ' + e.message;
+            } finally {
+                loadingVoices.value = false;
             }
         };
 
         // Sync avatars from HeyGen
         const syncAvatars = async () => {
             syncing.avatars = true;
+            errors.avatars = null;
             try {
-                await api('POST', '/avatars/sync');
-                await loadAvatars();
+                const result = await api('POST', '/avatars/sync');
+                if (result.success) {
+                    avatars.value = result.data || [];
+                    message.value = { type: 'success', text: result.message || 'Avatars synchronisés' };
+                } else {
+                    errors.avatars = result.error || 'Erreur lors de la synchronisation';
+                }
+            } catch (e) {
+                errors.avatars = 'Erreur: ' + e.message;
             } finally {
                 syncing.avatars = false;
             }
@@ -86,9 +117,17 @@ createApp({
         // Sync voices from HeyGen
         const syncVoices = async () => {
             syncing.voices = true;
+            errors.voices = null;
             try {
-                await api('POST', '/voices/sync');
-                await loadVoices();
+                const result = await api('POST', '/voices/sync');
+                if (result.success) {
+                    voices.value = result.data || [];
+                    message.value = { type: 'success', text: result.message || 'Voix synchronisées' };
+                } else {
+                    errors.voices = result.error || 'Erreur lors de la synchronisation';
+                }
+            } catch (e) {
+                errors.voices = 'Erreur: ' + e.message;
             } finally {
                 syncing.voices = false;
             }
@@ -176,6 +215,7 @@ createApp({
         return {
             activeTab, loading, generating, message,
             avatars, voices, videos, syncing,
+            loadingAvatars, loadingVoices, errors,
             form, selectedDimension,
             loadAvatars, loadVoices, syncAvatars, syncVoices,
             loadVideos, generateVideo, checkStatus, deleteVideo,
