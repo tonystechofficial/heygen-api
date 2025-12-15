@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: heygen_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_DATABASE:-heygen_api}
+      MYSQL_USER: ${DB_USER:-heygen}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-heygen_password}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./api/migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - heygen_network
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: heygen_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+    networks:
+      - heygen_network
+
+  php:
+    build: .
+    container_name: heygen_php
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./:/var/www/html
+      - ./apache.conf:/etc/apache2/sites-available/000-default.conf
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html/public
+    depends_on:
+      - mysql
+    networks:
+      - heygen_network
+
+volumes:
+  mysql_data:
+
+networks:
+  heygen_network:
+    driver: bridge
+

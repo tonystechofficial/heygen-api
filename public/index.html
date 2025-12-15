@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HeyGen Video Generator</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Vue.js 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body>
+    <div id="app">
+        <header class="header">
+            <h1>🎬 HeyGen Video Generator</h1>
+            <p>Générez des vidéos avec des avatars parlants</p>
+        </header>
+
+        <main class="main-content">
+            <!-- Tabs -->
+            <nav class="tabs">
+                <button 
+                    :class="['tab', { active: activeTab === 'generate' }]"
+                    @click="activeTab = 'generate'">
+                    ✨ Générer
+                </button>
+                <button 
+                    :class="['tab', { active: activeTab === 'videos' }]"
+                    @click="activeTab = 'videos'; loadVideos()">
+                    📹 Mes Vidéos
+                </button>
+            </nav>
+
+            <!-- Generate Tab -->
+            <section v-if="activeTab === 'generate'" class="tab-content">
+                <form @submit.prevent="generateVideo" class="generate-form">
+                    <div class="form-group">
+                        <label for="title">Titre de la vidéo</label>
+                        <input type="text" id="title" v-model="form.title" placeholder="Ma vidéo">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="script">Script (texte à dire) *</label>
+                        <textarea 
+                            id="script" 
+                            v-model="form.script" 
+                            rows="4" 
+                            placeholder="Bonjour et bienvenue..."
+                            required></textarea>
+                        <small>{{ form.script.length }} caractères</small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="avatar">Avatar *</label>
+                            <select id="avatar" v-model="form.avatar_id" required>
+                                <option value="">-- Sélectionner --</option>
+                                <option v-for="avatar in avatars" :key="avatar.heygen_avatar_id" :value="avatar.heygen_avatar_id">
+                                    {{ avatar.name }}
+                                </option>
+                            </select>
+                            <button type="button" class="btn-small" @click="syncAvatars" :disabled="syncing.avatars">
+                                {{ syncing.avatars ? '...' : '🔄' }}
+                            </button>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="voice">Voix *</label>
+                            <select id="voice" v-model="form.voice_id" required>
+                                <option value="">-- Sélectionner --</option>
+                                <option v-for="voice in voices" :key="voice.heygen_voice_id" :value="voice.heygen_voice_id">
+                                    {{ voice.name }} ({{ voice.language }})
+                                </option>
+                            </select>
+                            <button type="button" class="btn-small" @click="syncVoices" :disabled="syncing.voices">
+                                {{ syncing.voices ? '...' : '🔄' }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dimension">Dimension</label>
+                            <select id="dimension" v-model="selectedDimension" @change="updateDimensions">
+                                <option value="1920x1080">Full HD Paysage (1920x1080)</option>
+                                <option value="1080x1920">Full HD Portrait (1080x1920)</option>
+                                <option value="1280x720">HD Paysage (1280x720)</option>
+                                <option value="1080x1080">Carré (1080x1080)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="speed">Vitesse</label>
+                            <input type="range" id="speed" v-model.number="form.settings.speed" min="0.5" max="2" step="0.1">
+                            <small>{{ form.settings.speed }}x</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="background">Couleur de fond</label>
+                        <input type="color" id="background" v-model="form.settings.background_color">
+                    </div>
+
+                    <button type="submit" class="btn-primary" :disabled="generating">
+                        {{ generating ? 'Génération en cours...' : '🚀 Générer la vidéo' }}
+                    </button>
+
+                    <div v-if="message" :class="['message', message.type]">
+                        {{ message.text }}
+                    </div>
+                </form>
+            </section>
+
+            <!-- Videos Tab -->
+            <section v-if="activeTab === 'videos'" class="tab-content">
+                <div class="videos-header">
+                    <h2>Mes vidéos ({{ videos.length }})</h2>
+                    <button class="btn-small" @click="loadVideos">🔄 Rafraîchir</button>
+                </div>
+
+                <div v-if="loading" class="loading">Chargement...</div>
+
+                <div v-else class="video-grid">
+                    <div v-for="video in videos" :key="video.id" class="video-card">
+                        <div class="video-thumbnail">
+                            <img v-if="video.thumbnail_url" :src="video.thumbnail_url" alt="Thumbnail">
+                            <div v-else class="placeholder">🎬</div>
+                        </div>
+                        <div class="video-info">
+                            <h3>{{ video.title }}</h3>
+                            <span :class="['status', video.status]">{{ statusLabel(video.status) }}</span>
+                            <p class="script-preview">{{ video.script.substring(0, 80) }}...</p>
+                            <div class="video-meta">
+                                <span>{{ video.width }}x{{ video.height }}</span>
+                                <span v-if="video.duration">{{ video.duration }}s</span>
+                            </div>
+                            <div class="video-actions">
+                                <button v-if="video.status === 'processing'" @click="checkStatus(video.id)" class="btn-small">
+                                    🔄 Vérifier
+                                </button>
+                                <a v-if="video.video_url" :href="video.video_url" target="_blank" class="btn-small btn-success">
+                                    ▶️ Voir
+                                </a>
+                                <button @click="deleteVideo(video.id)" class="btn-small btn-danger">🗑️</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <p v-if="!loading && videos.length === 0" class="empty-state">
+                    Aucune vidéo générée. Commencez par en créer une !
+                </p>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
+
