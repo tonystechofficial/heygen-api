@@ -15,11 +15,9 @@ createApp({
         const generating = ref(false);
         const message = ref(null);
 
-        const avatarGroups = ref([]);
         const avatars = ref([]);
         const voices = ref([]);
         const videos = ref([]);
-        const selectedGroup = ref('');
 
         const syncing = reactive({
             avatars: false,
@@ -55,60 +53,11 @@ createApp({
         };
 
         // Loading states
-        const loadingGroups = ref(false);
         const loadingAvatars = ref(false);
         const loadingVoices = ref(false);
-        const errors = reactive({ groups: null, avatars: null, voices: null });
+        const errors = reactive({ avatars: null, voices: null });
 
-        // Load avatar groups
-        const loadAvatarGroups = async () => {
-            loadingGroups.value = true;
-            errors.groups = null;
-            try {
-                const result = await api('GET', '/avatar-groups');
-                if (result.success) {
-                    avatarGroups.value = result.data || [];
-                } else {
-                    errors.groups = result.error || 'Erreur lors du chargement des groupes';
-                }
-            } catch (e) {
-                console.error('Failed to load avatar groups:', e);
-                errors.groups = 'Erreur réseau: ' + e.message;
-            } finally {
-                loadingGroups.value = false;
-            }
-        };
-
-        // Load avatars by group
-        const loadAvatarsByGroup = async (groupId) => {
-            if (!groupId) {
-                avatars.value = [];
-                return;
-            }
-            loadingAvatars.value = true;
-            errors.avatars = null;
-            try {
-                const result = await api('GET', `/avatar-groups/${groupId}/avatars`);
-                if (result.success) {
-                    avatars.value = result.data || [];
-                } else {
-                    errors.avatars = result.error || 'Erreur lors du chargement des avatars';
-                }
-            } catch (e) {
-                console.error('Failed to load avatars:', e);
-                errors.avatars = 'Erreur réseau: ' + e.message;
-            } finally {
-                loadingAvatars.value = false;
-            }
-        };
-
-        // Handle group selection change
-        const onGroupChange = () => {
-            form.avatar_id = '';
-            loadAvatarsByGroup(selectedGroup.value);
-        };
-
-        // Load all avatars (legacy)
+        // Load avatars
         const loadAvatars = async () => {
             loadingAvatars.value = true;
             errors.avatars = null;
@@ -259,16 +208,15 @@ createApp({
 
         // Init
         onMounted(() => {
-            loadAvatarGroups();
+            loadAvatars();
             loadVoices();
         });
 
         return {
             activeTab, loading, generating, message,
-            avatarGroups, avatars, voices, videos, syncing,
-            selectedGroup, loadingGroups, loadingAvatars, loadingVoices, errors,
+            avatars, voices, videos, syncing,
+            loadingAvatars, loadingVoices, errors,
             form, selectedDimension,
-            loadAvatarGroups, loadAvatarsByGroup, onGroupChange,
             loadAvatars, loadVoices, syncAvatars, syncVoices,
             loadVideos, generateVideo, checkStatus, deleteVideo,
             updateDimensions, statusLabel

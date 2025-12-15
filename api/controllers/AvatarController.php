@@ -62,16 +62,22 @@ class AvatarController
     }
 
     /**
-     * GET /api/avatars - List all cached avatars
+     * GET /api/avatars - List all avatars directly from HeyGen API
      */
     public function index(): array
     {
-        // If cache is invalid or empty, sync from HeyGen
-        if (!$this->avatarRepository->isCacheValid()) {
-            $this->syncFromHeygen();
+        $response = $this->heygenService->listAvatars();
+
+        if (!$response['success']) {
+            return [
+                'success' => false,
+                'error' => $response['error'] ?? $response['message'] ?? 'Failed to fetch avatars',
+                'code' => 500,
+            ];
         }
 
-        $avatars = $this->avatarRepository->findAll();
+        $avatars = $response['data']['avatars'] ?? $response['avatars'] ?? [];
+
         return ['success' => true, 'data' => $avatars, 'code' => 200];
     }
 

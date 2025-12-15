@@ -19,7 +19,7 @@ class HeygenService
     {
         $this->apiKey = $_ENV['HEYGEN_API_KEY'] ?? '';
         $this->apiUrl = $_ENV['HEYGEN_API_URL'] ?? 'https://api.heygen.com';
-        $this->timeout = 30;
+        $this->timeout = 120; // 2 minutes pour les gros endpoints comme /avatars
     }
 
     /**
@@ -70,7 +70,7 @@ class HeygenService
      */
     public function listAvatarGroups(): array
     {
-        return $this->request('GET', '/v2/avatar_groups');
+        return $this->request('GET', '/v2/avatar_group.list');
     }
 
     /**
