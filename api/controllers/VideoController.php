@@ -106,7 +106,8 @@ class VideoController
                     $updateData['thumbnail_url'] = $response['data']['thumbnail_url'] ?? null;
                     $updateData['duration'] = $response['data']['duration'] ?? null;
                 } elseif ($heygenStatus === 'failed') {
-                    $updateData['error_message'] = $response['data']['error'] ?? 'Generation failed';
+                    $error = $response['data']['error'] ?? 'Generation failed';
+                    $updateData['error_message'] = is_array($error) ? json_encode($error) : $error;
                 }
 
                 $this->videoRepository->update($id, $updateData);
@@ -119,6 +120,7 @@ class VideoController
 
     /**
      * GET /api/videos - List all videos
+     * Auto-checks status for videos in 'processing' state
      */
     public function index(): array
     {
@@ -127,7 +129,48 @@ class VideoController
         $videos = $this->videoRepository->findAll($limit, $offset);
         $total = $this->videoRepository->count();
 
+        // Auto-check status for processing videos
+        foreach ($videos as &$video) {
+            if ($video['status'] === 'processing' && !empty($video['heygen_video_id'])) {
+                $video = $this->refreshVideoStatus($video);
+            }
+        }
+
         return ['success' => true, 'data' => $videos, 'total' => $total, 'code' => 200];
+    }
+
+    /**
+     * Refresh video status from HeyGen API and update DB
+     */
+    private function refreshVideoStatus(array $video): array
+    {
+        $response = $this->heygenService->getVideoStatus($video['heygen_video_id']);
+
+        if (!$response['success'] || !isset($response['data'])) {
+            return $video;
+        }
+
+        $heygenStatus = $response['data']['status'] ?? 'processing';
+        $newStatus = $this->mapHeygenStatus($heygenStatus);
+
+        // Only update if status changed
+        if ($newStatus !== $video['status']) {
+            $updateData = ['status' => $newStatus];
+
+            if ($heygenStatus === 'completed') {
+                $updateData['video_url'] = $response['data']['video_url'] ?? null;
+                $updateData['thumbnail_url'] = $response['data']['thumbnail_url'] ?? null;
+                $updateData['duration'] = $response['data']['duration'] ?? null;
+            } elseif ($heygenStatus === 'failed') {
+                $error = $response['data']['error'] ?? 'Generation failed';
+                $updateData['error_message'] = is_array($error) ? json_encode($error) : $error;
+            }
+
+            $this->videoRepository->update($video['id'], $updateData);
+            $video = array_merge($video, $updateData);
+        }
+
+        return $video;
     }
 
     /**
