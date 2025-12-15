@@ -22,6 +22,46 @@ class AvatarController
     }
 
     /**
+     * GET /api/avatar-groups - List all avatar groups from HeyGen
+     */
+    public function groups(): array
+    {
+        $response = $this->heygenService->listAvatarGroups();
+
+        if (!$response['success']) {
+            return [
+                'success' => false,
+                'error' => $response['error'] ?? $response['message'] ?? 'Failed to fetch avatar groups',
+                'code' => 500,
+            ];
+        }
+
+        $groups = $response['data']['avatar_groups'] ?? $response['avatar_groups'] ?? [];
+
+        return ['success' => true, 'data' => $groups, 'code' => 200];
+    }
+
+    /**
+     * GET /api/avatar-groups/{group_id}/avatars - List avatars in a group
+     */
+    public function avatarsByGroup(string $groupId): array
+    {
+        $response = $this->heygenService->listAvatarsByGroup($groupId);
+
+        if (!$response['success']) {
+            return [
+                'success' => false,
+                'error' => $response['error'] ?? $response['message'] ?? 'Failed to fetch avatars',
+                'code' => 500,
+            ];
+        }
+
+        $avatars = $response['data']['avatars'] ?? $response['avatars'] ?? [];
+
+        return ['success' => true, 'data' => $avatars, 'code' => 200];
+    }
+
+    /**
      * GET /api/avatars - List all cached avatars
      */
     public function index(): array

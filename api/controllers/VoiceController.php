@@ -22,22 +22,21 @@ class VoiceController
     }
 
     /**
-     * GET /api/voices - List all cached voices
+     * GET /api/voices - List all voices directly from HeyGen API
      */
     public function index(): array
     {
-        // If cache is invalid or empty, sync from HeyGen
-        if (!$this->voiceRepository->isCacheValid()) {
-            $this->syncFromHeygen();
+        $response = $this->heygenService->listVoices();
+
+        if (!$response['success']) {
+            return [
+                'success' => false,
+                'error' => $response['error'] ?? $response['message'] ?? 'Failed to fetch voices',
+                'code' => 500,
+            ];
         }
 
-        $language = $_GET['language'] ?? null;
-        
-        if ($language) {
-            $voices = $this->voiceRepository->findByLanguage($language);
-        } else {
-            $voices = $this->voiceRepository->findAll();
-        }
+        $voices = $response['data']['voices'] ?? $response['voices'] ?? [];
 
         return ['success' => true, 'data' => $voices, 'code' => 200];
     }

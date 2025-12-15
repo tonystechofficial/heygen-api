@@ -51,23 +51,41 @@
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="avatar">Avatar *</label>
+                            <label for="avatar-group">Groupe d'avatars *</label>
                             <div class="select-row">
-                                <select id="avatar" v-model="form.avatar_id" required :disabled="loadingAvatars">
-                                    <option value="" v-if="loadingAvatars">Chargement...</option>
-                                    <option value="" v-else-if="avatars.length === 0">Cliquez 🔄 pour charger</option>
-                                    <option value="" v-else>-- Sélectionner ({{ avatars.length }}) --</option>
-                                    <option v-for="avatar in avatars" :key="avatar.heygen_avatar_id" :value="avatar.heygen_avatar_id">
-                                        {{ avatar.name }}
+                                <select id="avatar-group" v-model="selectedGroup" @change="onGroupChange" :disabled="loadingGroups">
+                                    <option value="" v-if="loadingGroups">Chargement...</option>
+                                    <option value="" v-else-if="avatarGroups.length === 0">Aucun groupe disponible</option>
+                                    <option value="" v-else>-- Sélectionner un groupe --</option>
+                                    <option v-for="group in avatarGroups" :key="group.id" :value="group.id">
+                                        {{ group.name }}
                                     </option>
                                 </select>
-                                <button type="button" class="btn-small" @click="syncAvatars" :disabled="syncing.avatars || loadingAvatars">
-                                    {{ syncing.avatars ? '⏳' : '🔄' }}
+                                <button type="button" class="btn-small" @click="loadAvatarGroups" :disabled="loadingGroups">
+                                    {{ loadingGroups ? '⏳' : '🔄' }}
                                 </button>
+                            </div>
+                            <small v-if="errors.groups" class="error-text">{{ errors.groups }}</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="avatar">Avatar *</label>
+                            <div class="select-row">
+                                <select id="avatar" v-model="form.avatar_id" required :disabled="loadingAvatars || !selectedGroup">
+                                    <option value="" v-if="!selectedGroup">Sélectionnez d'abord un groupe</option>
+                                    <option value="" v-else-if="loadingAvatars">Chargement...</option>
+                                    <option value="" v-else-if="avatars.length === 0">Aucun avatar dans ce groupe</option>
+                                    <option value="" v-else>-- Sélectionner ({{ avatars.length }}) --</option>
+                                    <option v-for="avatar in avatars" :key="avatar.avatar_id" :value="avatar.avatar_id">
+                                        {{ avatar.avatar_name || avatar.name }}
+                                    </option>
+                                </select>
                             </div>
                             <small v-if="errors.avatars" class="error-text">{{ errors.avatars }}</small>
                         </div>
+                    </div>
 
+                    <div class="form-row">
                         <div class="form-group">
                             <label for="voice">Voix *</label>
                             <div class="select-row">
@@ -75,7 +93,7 @@
                                     <option value="" v-if="loadingVoices">Chargement...</option>
                                     <option value="" v-else-if="voices.length === 0">Cliquez 🔄 pour charger</option>
                                     <option value="" v-else>-- Sélectionner ({{ voices.length }}) --</option>
-                                    <option v-for="voice in voices" :key="voice.heygen_voice_id" :value="voice.heygen_voice_id">
+                                    <option v-for="voice in voices" :key="voice.voice_id" :value="voice.voice_id">
                                         {{ voice.name }} ({{ voice.language || 'N/A' }})
                                     </option>
                                 </select>
@@ -84,6 +102,10 @@
                                 </button>
                             </div>
                             <small v-if="errors.voices" class="error-text">{{ errors.voices }}</small>
+                        </div>
+
+                        <div class="form-group">
+                            <!-- Placeholder pour équilibrer la grille -->
                         </div>
                     </div>
 

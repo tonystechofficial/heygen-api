@@ -7,9 +7,10 @@ declare(strict_types=1);
  * Handles all API requests and routes them to appropriate controllers
  */
 
-// Error reporting
+// Error reporting - enable display for debugging
 error_reporting(E_ALL);
-ini_set('display_errors', '0');
+ini_set('display_errors', '1');
+ini_set('log_errors', '1');
 
 // CORS headers
 header('Access-Control-Allow-Origin: *');
@@ -115,6 +116,17 @@ function routeRequest(string $method, string $path): array
     if ($method === 'DELETE' && preg_match('#^/videos/(\d+)$#', $path, $matches)) {
         $controller = new \App\Controllers\VideoController();
         return $controller->delete((int) $matches[1]);
+    }
+
+    // Avatar group routes
+    if ($method === 'GET' && $path === '/avatar-groups') {
+        $controller = new \App\Controllers\AvatarController();
+        return $controller->groups();
+    }
+
+    if ($method === 'GET' && preg_match('#^/avatar-groups/([^/]+)/avatars$#', $path, $matches)) {
+        $controller = new \App\Controllers\AvatarController();
+        return $controller->avatarsByGroup($matches[1]);
     }
 
     // Avatar routes

@@ -66,7 +66,23 @@ class HeygenService
     }
 
     /**
-     * List available avatars
+     * List all avatar groups
+     */
+    public function listAvatarGroups(): array
+    {
+        return $this->request('GET', '/v2/avatar_groups');
+    }
+
+    /**
+     * List avatars in a specific group
+     */
+    public function listAvatarsByGroup(string $groupId): array
+    {
+        return $this->request('GET', "/v2/avatar_group/{$groupId}/avatars");
+    }
+
+    /**
+     * List all available avatars (all groups)
      */
     public function listAvatars(): array
     {
